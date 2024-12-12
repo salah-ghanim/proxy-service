@@ -32,18 +32,18 @@ const logger = {
 
 // Middleware for JSON and URL-encoded data
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended: true}));
 
 // Lightweight Proxy Endpoint
 app.use('/proxy', async (req, res) => {
-    const { targetURL, getawayAPIKey } = req.query;
+    const {targetURL, getawayAPIKey} = req.query;
 
     if (getawayAPIKey !== API_KEY) {
-        return res.status(403).json({ error: 'Forbidden: Invalid API Key' });
+        return res.status(403).json({error: 'Forbidden: Invalid API Key'});
     }
 
     if (!targetURL) {
-        return res.status(400).json({ error: 'targetUrl parameter is required.' });
+        return res.status(400).json({error: 'targetUrl parameter is required.'});
     }
 
     try {
@@ -59,20 +59,20 @@ app.use('/proxy', async (req, res) => {
         res.send(data);
     } catch (error) {
         logger.error('Error in lightweight proxy', error);
-        res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+        res.status(500).json({error: `Internal Server Error: ${error.message}`});
     }
 });
 
 // Streaming Proxy Endpoint for Files
-app.use('/files', async (req, res) => {
-    const { targetURL, getawayAPIKey } = req.query;
+app.use('/files', (req, res) => {
+    const {targetURL, getawayAPIKey} = req.query;
 
     if (getawayAPIKey !== API_KEY) {
-        return res.status(403).json({ error: 'Forbidden: Invalid API Key' });
+        return res.status(403).json({error: 'Forbidden: Invalid API Key'});
     }
 
     if (!targetURL) {
-        return res.status(400).json({ error: 'targetUrl parameter is required.' });
+        return res.status(400).json({error: 'targetUrl parameter is required.'});
     }
 
     try {
@@ -83,7 +83,7 @@ app.use('/files', async (req, res) => {
             port: parsedUrl.port || (isHttps ? 443 : 80),
             path: parsedUrl.path,
             method: req.method,
-            headers: { ...req.headers },
+            headers: {...req.headers},
         };
 
         delete requestOptions.headers['host'];
@@ -97,14 +97,16 @@ app.use('/files', async (req, res) => {
 
         proxyRequest.on('error', (error) => {
             logger.error('Error in streaming proxy', error);
-            res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+            res.status(500).json({error: `Internal Server Error: ${error.message}`});
         });
     } catch (error) {
         logger.error('Error setting up streaming proxy', error);
-        res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+        res.status(500).json({error: `Internal Server Error: ${error.message}`});
     }
 });
 
 app.listen(PORT, () => {
-    logger.info('Proxy service started', { port: PORT });
+    logger.info('Proxy service started', {
+        port: PORT, environment: process.env.NODE_ENV || 'development'
+    });
 });
