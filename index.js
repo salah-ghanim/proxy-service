@@ -65,6 +65,7 @@ app.use('/proxy', async (req, res) => {
 
 // Streaming Proxy Endpoint for Files
 app.use('/files', (req, res) => {
+    logger.info("received request /files");
     const {targetURL, getawayAPIKey} = req.query;
 
     if (getawayAPIKey !== API_KEY) {
