@@ -36,36 +36,38 @@ app.use(express.urlencoded({extended: true}));
 
 // Lightweight Proxy Endpoint
 app.use('/proxy', async (req, res) => {
-    const {targetURL, getawayAPIKey} = req.query;
+    const { targetURL, getawayAPIKey} = req.query;
 
     if (getawayAPIKey !== API_KEY) {
-        return res.status(403).json({error: 'Forbidden: Invalid API Key'});
+        return res.status(403).json({ error: 'Forbidden: Invalid API Key' });
     }
 
     if (!targetURL) {
-        return res.status(400).json({error: 'targetUrl parameter is required.'});
+        return res.status(400).json({ error: 'targetUrl parameter is required.' });
     }
-    const {headers} = req;
 
+    const { method, headers, body } = req;
 
+    // Clean headers
     delete headers['host'];
     delete headers['content-length'];
 
-
     try {
         const response = await fetch(targetURL, {
-            method: req.method,
-            headers: headers,
-            body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+            method,
+            headers,
+            body: method !== 'GET' && method !== 'HEAD' ? JSON.stringify(body) : undefined,
+            redirect: 'follow',
         });
 
+        // Forward response
         res.status(response.status);
         response.headers.forEach((value, name) => res.setHeader(name, value));
         const data = await response.text();
         res.send(data);
     } catch (error) {
         logger.error('Error in lightweight proxy', error);
-        res.status(500).json({error: `Internal Server Error: ${error.message}`});
+        res.status(500).json({ error: `Internal Server Error: ${error.message}` });
     }
 });
 
