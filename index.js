@@ -45,11 +45,17 @@ app.use('/proxy', async (req, res) => {
     if (!targetURL) {
         return res.status(400).json({error: 'targetUrl parameter is required.'});
     }
+    const {headers} = req;
+
+
+    delete headers['host'];
+    delete headers['content-length'];
+
 
     try {
         const response = await fetch(targetURL, {
             method: req.method,
-            headers: req.headers,
+            headers: headers,
             body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
         });
 
@@ -76,6 +82,12 @@ app.use('/files', (req, res) => {
         return res.status(400).json({error: 'targetUrl parameter is required.'});
     }
 
+    const {headers} = req;
+
+
+    delete headers['host'];
+    delete headers['content-length'];
+
     try {
         const parsedUrl = url.parse(targetURL);
         const isHttps = parsedUrl.protocol === 'https:';
@@ -84,7 +96,7 @@ app.use('/files', (req, res) => {
             port: parsedUrl.port || (isHttps ? 443 : 80),
             path: parsedUrl.path,
             method: req.method,
-            headers: {...req.headers},
+            headers: headers,
         };
 
         delete requestOptions.headers['host'];
