@@ -21,6 +21,16 @@ const logger = {
 // Middleware for JSON and URL-encoded data
 app.use(express.urlencoded({extended: true}));
 
+// Status endpoint
+app.get('/status', (req, res) => {
+    logger.info("received request /status");
+    res.json({
+        status: 'ok',
+        uptime: process.uptime(), // Uptime in seconds
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Lightweight Proxy Endpoint
 app.use('/proxy', async (req, res) => {
     logger.info("received request /proxy");
