@@ -11,32 +11,20 @@ const PORT = process.env.PORT || 3000;
 // Logging utility
 const logger = {
     info: (message, meta = {}) => {
-        console.log(JSON.stringify({
-            timestamp: new Date().toISOString(),
-            level: 'info',
-            message,
-            ...meta
-        }));
+        console.log(JSON.stringify({ timestamp: new Date().toISOString(), level: 'info', message, ...meta }));
     },
     error: (message, error = null, meta = {}) => {
-        console.error(JSON.stringify({
-            timestamp: new Date().toISOString(),
-            level: 'error',
-            message,
-            error: error?.message || error,
-            stack: error?.stack,
-            ...meta
-        }));
+        console.error(JSON.stringify({ timestamp: new Date().toISOString(), level: 'error', message, error: error?.message || error, ...meta }));
     }
 };
 
 // Middleware for JSON and URL-encoded data
-app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 // Lightweight Proxy Endpoint
 app.use('/proxy', async (req, res) => {
-    const { targetURL, getawayAPIKey} = req.query;
+    logger.info("received request /proxy");
+    const { targetURL, getawayAPIKey } = req.query;
 
     if (getawayAPIKey !== API_KEY) {
         return res.status(403).json({ error: 'Forbidden: Invalid API Key' });
@@ -46,30 +34,61 @@ app.use('/proxy', async (req, res) => {
         return res.status(400).json({ error: 'targetUrl parameter is required.' });
     }
 
-    const { method, headers, body } = req;
+    const { method, headers } = req;
 
     // Clean headers
     delete headers['host'];
-    delete headers['content-length'];
+    delete headers['content-length']; // Let fetch calculate the new length
 
     try {
-        const response = await fetch(targetURL, {
+        // Stream the request body directly.
+        // This fixes issues where express.json() corrupted the payload.
+        const fetchOptions = {
             method,
             headers,
-            body: method !== 'GET' && method !== 'HEAD' ? JSON.stringify(body) : undefined,
             redirect: 'follow',
-        });
+        };
 
-        // Forward response
+        if (method !== 'GET' && method !== 'HEAD') {
+            // Pass the incoming request stream directly to node-fetch
+            fetchOptions.body = req;
+        }
+
+        const response = await fetch(targetURL, fetchOptions);
+
+        // --- DEBUGGING THE JAVA ERROR ---
+        // Check if the upstream returned JSON. If not, log it.
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // Clone the response so we can read text without consuming the stream for the client
+            const textBody = await response.clone().text();
+            logger.error(`Upstream returned NON-JSON response (Likely cause of Java Error)`, {
+                status: response.status,
+                contentType: contentType,
+                bodyPreview: textBody.substring(0, 200) // Log first 200 chars
+            });
+        }
+        // --------------------------------
+
+        // Forward status
         res.status(response.status);
+
+        // Forward headers
         response.headers.forEach((value, name) => res.setHeader(name, value));
-        const data = await response.text();
-        res.send(data);
+
+        // Pipe response stream directly to Express response
+        // This is more efficient than await response.text()
+        response.body.pipe(res);
+
     } catch (error) {
         logger.error('Error in lightweight proxy', error);
-        res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+        // Ensure we send a JSON error so Java GSON handles it gracefully
+        if (!res.headersSent) {
+            res.status(500).json({ error: `Internal Server Error: ${error.message}` });
+        }
     }
 });
+
 
 // Streaming Proxy Endpoint for Files
 app.use('/files', (req, res) => {
