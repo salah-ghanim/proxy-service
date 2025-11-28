@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import http from 'http';
 import https from 'https';
 import url from 'url';
+import { Readable } from 'stream';
 
 const app = express();
 const API_KEY = process.env.API_KEY || "d53e4e28-8b9e-4c5d-9a8b-5c2e3a3b4a57";
@@ -88,7 +89,7 @@ app.use('/proxy', async (req, res) => {
 
         // Pipe response stream directly to Express response
         // This is more efficient than await response.text()
-        response.body.pipe(res);
+        Readable.from(response.body).pipe(res);
 
     } catch (error) {
         logger.error('Error in lightweight proxy', error);
