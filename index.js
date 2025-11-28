@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import http from 'http';
 import https from 'https';
 import url from 'url';
+import fs from 'fs/promises';
 
 const app = express();
 const API_KEY = process.env.API_KEY || "d53e4e28-8b9e-4c5d-9a8b-5c2e3a3b4a57";
@@ -29,6 +30,14 @@ const logger = {
         }));
     }
 };
+
+let appVersion = 'unknown';
+try {
+    const packageJson = JSON.parse(await fs.readFile('./package.json', 'utf8'));
+    appVersion = packageJson.version;
+} catch (error) {
+    logger.error('Failed to read package.json for version', error);
+}
 
 // Middleware for JSON and URL-encoded data
 app.use(express.json());
@@ -76,7 +85,8 @@ app.get('/status', (req, res) => {
     res.json({
         status: 'ok',
         uptime: process.uptime(), // Uptime in seconds
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        version: appVersion
     });
 });
 
