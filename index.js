@@ -78,10 +78,25 @@ app.use('/proxy', async (req, res) => {
             redirect: 'follow',
         });
 
+        const data = await response.text(); // Moved up to be available for logging
+
+        // Log non-2xx responses from target URL
+        if (response.status < 200 || response.status >= 300) {
+            logger.info('Non-2xx response from target URL', {
+                targetURL,
+                method,
+                statusCode: response.status,
+                statusText: response.statusText,
+                requestHeaders: headers,
+                requestBody: req.body, // Added request body
+                responseHeaders: Array.from(response.headers.entries()).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}),
+                responseBody: data, // Added response body
+            });
+        }
+
         // Forward response
         res.status(response.status);
         response.headers.forEach((value, name) => res.setHeader(name, value));
-        const data = await response.text();
         res.send(data);
     } catch (error) {
         logger.error('Error in lightweight proxy', error);
