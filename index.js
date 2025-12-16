@@ -43,6 +43,15 @@ try {
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
+// Error handling middleware for JSON parsing errors
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+        logger.error('Bad Request: Malformed JSON', err);
+        return res.status(400).send({ status: 400, message: 'Malformed JSON in request body' });
+    }
+    next();
+});
+
 // Lightweight Proxy Endpoint
 app.use('/proxy', async (req, res) => {
     const { targetURL, getawayAPIKey} = req.query;

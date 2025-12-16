@@ -6,6 +6,7 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "encoding": "^0.1.13",
     "express": "^4.21.2",
     "node-fetch": "^3.3.2"
   },
